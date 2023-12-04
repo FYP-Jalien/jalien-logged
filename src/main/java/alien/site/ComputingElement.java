@@ -527,14 +527,6 @@ public final class ComputingElement extends Thread {
 	}
 
 	private static String getStartup() {
-		final String javaDir;
-
-		if (ConfigUtils.getConfiguration("version").getb("jdkArm", false))
-			javaDir = CVMFS.getJavaArmDir() + "/";
-		else if (!ConfigUtils.getConfiguration("version").getb("jdk64", true))
-			javaDir = CVMFS.getJava32Dir() + "/";
-		else
-			javaDir = CVMFS.getJava64Dir() + "/";
 
 		final String javaCmd = "java -client -Xms16M -Xmx128M -Djdk.lang.Process.launchMechanism=vfork -XX:+UseSerialGC -cp";
 		final String jarPath = "$(dirname $(which jalien))/../lib/alien-users.jar";
@@ -542,9 +534,9 @@ public final class ComputingElement extends Thread {
 
 		final String jarPathCustom = ConfigUtils.getConfiguration("version").gets("custom.jobagent.jar");
 		if (jarPathCustom != null && !jarPathCustom.isBlank())
-			return javaDir + javaCmd + " " + jarPathCustom + " " + jarClass;
+			return javaCmd + " " + jarPathCustom + " " + jarClass;
 
-		return javaDir + javaCmd + " " + jarPath + " " + jarClass;
+		return javaCmd + " " + jarPath + " " + jarClass;
 	}
 
 	/**
