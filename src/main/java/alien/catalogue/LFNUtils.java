@@ -216,53 +216,75 @@ public class LFNUtils {
 	 * @return entry
 	 */
 	public static List<LFN> getLFNs(final boolean ignoreFolders, final Collection<String> fileName) {
-		if (fileName == null || fileName.size() == 0)
-			return null;
-
-		final List<LFN> retList = new ArrayList<>(fileName.size());
-
-		if (fileName.size() == 1) {
-			final LFN l = getLFN(fileName.iterator().next());
-
-			if (l != null) {
-				retList.add(l);
-				return retList;
-			}
-
+		System.out.println("This is Getting LFNs in LFN Utils");
+	
+		if (fileName == null || fileName.size() == 0) {
+			System.out.println("File names collection is empty");
 			return null;
 		}
-
+	
+		final List<LFN> retList = new ArrayList<>(fileName.size());
+	
+		if (fileName.size() == 1) {
+			final String singleFileName = fileName.iterator().next();
+			System.out.println("Single File Name: " + singleFileName);
+	
+			final LFN l = getLFN(singleFileName);
+	
+			if (l != null) {
+				retList.add(l);
+				System.out.println("LFN added to the list");
+				return retList;
+			}
+	
+			System.out.println("Failed to get LFN for the single file name");
+			return null;
+		}
+	
 		final Map<IndexTableEntry, List<String>> mapping = new HashMap<>();
-
+	
 		for (final String file : fileName) {
 			final String processedFileName = processFileName(file);
-
+			System.out.println("Processed File Name: " + processedFileName);
+	
 			final IndexTableEntry ite = CatalogueUtils.getClosestMatch(processedFileName);
-
+	
 			if (ite != null) {
 				List<String> files = mapping.get(ite);
-
+	
 				if (files == null) {
 					files = new LinkedList<>();
 					mapping.put(ite, files);
 				}
-
+	
 				files.add(processedFileName);
 			}
 		}
-
-		if (mapping.size() == 0)
+	
+		if (mapping.size() == 0) {
+			System.out.println("No mapping found");
 			return null;
-
-		for (final Map.Entry<IndexTableEntry, List<String>> entry : mapping.entrySet()) {
-			final List<LFN> tempList = entry.getKey().getLFNs(ignoreFolders, entry.getValue());
-
-			if (tempList != null && tempList.size() > 0)
-				retList.addAll(tempList);
 		}
-
+	
+		for (final Map.Entry<IndexTableEntry, List<String>> entry : mapping.entrySet()) {
+			final IndexTableEntry ite = entry.getKey();
+			final List<String> fileList = entry.getValue();
+			System.out.println("Processing IndexTableEntry: " + ite);
+			System.out.println("File List: " + fileList);
+	
+			final List<LFN> tempList = ite.getLFNs(ignoreFolders, fileList);
+	
+			if (tempList != null && tempList.size() > 0) {
+				retList.addAll(tempList);
+				System.out.println("LFNs added to the list");
+			}
+		}
+	
+		System.out.println("LFN retrieval completed");
+		System.out.println("retList: " + retList);
 		return retList;
 	}
+	
 
 	/**
 	 * @param user

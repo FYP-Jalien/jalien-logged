@@ -60,78 +60,93 @@ public abstract class BatchQueue {
 	 * @return the output of the given command, one array entry per line
 	 */
 	public ExitStatus executeCommand(String cmd) {
+		
+		System.out.println("This is the batch queue execute command");
+
 		ExitStatus exitStatus = null;
-
+	
+		System.out.println("Executing: " + cmd);
 		logger.info("Executing: " + cmd);
-
+	
 		try {
 			ArrayList<String> cmd_full = new ArrayList<>();
 			cmd_full.add("/bin/bash");
 			cmd_full.add("-c");
 			cmd_full.add(cmd);
+			System.out.println("Full command for the processbuilder : " + cmd_full);
 			final ProcessBuilder proc_builder = new ProcessBuilder(cmd_full);
-
+	
 			Map<String, String> env = proc_builder.environment();
+			System.out.println("ProcessBuilder Environment: " + env);
 			String[] dirs = {
 					"/cvmfs/alice.cern.ch/",
 					env.get("JALIEN_ROOT"),
 					env.get("JALIEN_HOME"),
 					env.get("ALIEN_ROOT"),
 			};
-
+	
 			HashMap<String, String> cleaned_env_vars = new HashMap<>();
 			Pattern p = Pattern.compile(".*PATH$");
-
+	
 			for (final Map.Entry<String, String> entry : env.entrySet()) {
 				final String var = entry.getKey();
 				Matcher m = p.matcher(var);
-
+	
 				if (!m.matches()) {
+					System.out.println("Skipping environment variable(not match patter, .*PATH$): " + var);
 					continue;
 				}
-
+	
 				String val = entry.getValue();
-
-				//
-				// remove any traces of (J)AliEn...
-				//
-
+				String oldVal = val;
+				// Debug print for environment variable cleanup
+				System.out.println("Cleaning environment variable: " + var);
 				for (String d : dirs) {
 					if (d == null) {
 						continue;
 					}
-
+	
 					String dir = d.replaceAll("/+$", "");
 					String pat = "\\Q" + dir + "\\E/[^:]*:?";
 					val = val.replaceAll(pat, "");
 				}
-
+				System.out.println(var + " = " + oldVal + " cleaned to" + var + " = " + val);
 				cleaned_env_vars.put(var, val);
 			}
-
+	
 			env.putAll(cleaned_env_vars);
-
+	
+			// Debug print for the final cleaned environment variables
+			System.out.println("Final cleaned environment variables: " + env);
+	
 			proc_builder.redirectErrorStream(true);
-
+			System.out.println("Process builder redirect error stream: " + proc_builder.redirectErrorStream());
+	
+			System.out.println("Starting process builder");
 			final Process proc = proc_builder.start();
 			final ProcessWithTimeout pTimeout = new ProcessWithTimeout(proc, proc_builder);
-
+			System.out.println("Process buildder timeout: " + pTimeout);
+			System.out.println("Waiting for process builder to finish");
 			pTimeout.waitFor(60, TimeUnit.SECONDS);
-
+	
 			exitStatus = pTimeout.getExitStatus();
-			logger.info("Process exit status: " + exitStatus.getExecutorFinishStatus());
 
+			// Debug print for process exit status
+			System.out.println("Process exit status: " + exitStatus);
+	
 			if (exitStatus.getExecutorFinishStatus() == ExecutorFinishStatus.ERROR)
-				logger.warning("An error was detected: " + exitStatus.getStdOut());
-
+				// Debug print for error detection
+				System.out.println("An error was detected: " + exitStatus.getStdOut());
+	
+		} catch (final Throwable t) {
+			// Debug print for exceptions
+			System.out.println("Exception executing command: " + cmd);
+			t.printStackTrace();
 		}
-		catch (final Throwable t) {
-			logger.log(Level.WARNING, "Exception executing command: " + cmd, t);
-		}
-
+	
 		return exitStatus;
-
 	}
+	
 
 	static List<String> getStdOut(ExitStatus exitStatus) {
 		return Arrays.asList(exitStatus.getStdOut().split("\n")).stream().map(String::trim).filter((s) -> !s.isBlank()).collect(Collectors.toList());

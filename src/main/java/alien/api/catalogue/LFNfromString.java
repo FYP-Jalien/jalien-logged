@@ -37,9 +37,13 @@ public class LFNfromString extends Request {
 	 * @param evenIfDoesntExist
 	 *
 	 */
-	public LFNfromString(final AliEnPrincipal user, final boolean ignoreFolders, final boolean evenIfDoesntExist, final Collection<String> paths) {
+	public LFNfromString(final AliEnPrincipal user, final boolean ignoreFolders, final boolean evenIfDoesntExist,
+			final Collection<String> paths) {
+		System.out.println("This is LFNfromString Class Constrcutor");
 		setRequestUser(user);
+		System.out.println("Request User is : "+user);
 		this.path = paths;
+		System.out.println("Path is : "+paths);
 		this.ignoreFolders = ignoreFolders;
 		this.evenIfDoesntExist = evenIfDoesntExist;
 	}
@@ -51,6 +55,7 @@ public class LFNfromString extends Request {
 
 	@Override
 	public void run() {
+		System.out.println("This is LFNfromString Class run() method");
 		if (evenIfDoesntExist) {
 			for (final String s : path) {
 				final LFN l = LFNUtils.getLFN(s, evenIfDoesntExist);

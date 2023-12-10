@@ -53,6 +53,7 @@ public class Dispatcher {
 	 *             exception thrown by the processing
 	 */
 	public static <T extends Request> T execute(final T r) throws ServerException {
+		
 		return execute(r, false);
 	}
 
@@ -67,15 +68,16 @@ public class Dispatcher {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T extends Request> T execute(final T r, final boolean forceRemote) throws ServerException {
+		System.out.println("This is Dispatcher Class execute() method");
 		final boolean isCacheable = r instanceof Cacheable;
-
+		System.out.println("isCacheable : "+isCacheable);
 		final String key;
 
 		if (isCacheable)
 			key = r.getClass().getCanonicalName() + "#" + ((Cacheable) r).getKey();
 		else
 			key = null;
-
+		System.out.println("Cache Key : "+key);
 		if (isCacheable) {
 			final WeakReference<Request> cachedObject = cache.get(key);
 
@@ -93,11 +95,15 @@ public class Dispatcher {
 		final T ret;
 
 		try (Timing timing = new Timing()) {
+			System.out.println("ConfigUtils.isCentralService() : "+ConfigUtils.isCentralService());
 			if (ConfigUtils.isCentralService() && !forceRemote) {
+				
 				r.authorizeUserAndRole();
-
+System.out.println("passesFirewallRules(r) : "+passesFirewallRules(r));
 				if (passesFirewallRules(r)) {
+					
 					try {
+						System.out.println("Firewall rules passes, so runs");
 						r.run();
 					}
 					catch (final Throwable t) {
@@ -114,6 +120,7 @@ public class Dispatcher {
 				ret = r;
 			}
 			else {
+				System.out.println("Not central srvice, so dispatching request");
 				try {
 					ret = dispatchRequest(r);
 				}
@@ -206,6 +213,7 @@ public class Dispatcher {
 	private static <T extends Request> T dispatchRequest(final T r) throws ServerException {
 
 		// return DispatchSSLClient.dispatchRequest(r);
+		System.out.println("Use parallel connections : "+useParallelConnections);
 		return useParallelConnections ? DispatchSSLMTClient.dispatchRequest(r) : DispatchSSLClient.dispatchRequest(r);
 	}
 

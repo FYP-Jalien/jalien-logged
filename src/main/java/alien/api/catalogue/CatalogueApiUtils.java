@@ -66,6 +66,8 @@ public class CatalogueApiUtils {
 	 * @return the LFN object
 	 */
 	public LFN getLFN(final String slfn) {
+		System.out.println("This is getLFN : public LFN getLFN(final String slfn)");
+		System.out.println("slfn : " + slfn);
 		return getLFN(slfn, false);
 	}
 
@@ -77,7 +79,11 @@ public class CatalogueApiUtils {
 	 * @return the LFN object, that might exist or not (if <code>evenIfDoesntExist = true</code>)
 	 */
 	public LFN getLFN(final String slfn, final boolean evenIfDoesntExist) {
+				System.out.println("This is getLFN : public LFN getLFN(final String slfn, final boolean evenIfDoesntExist)");
+				System.out.println("slfn : " + slfn);
+		System.out.println(evenIfDoesntExist);
 		final Collection<LFN> ret = getLFNs(Arrays.asList(slfn), false, evenIfDoesntExist);
+		System.out.println("Goot ret : "+ret);
 		return ret != null && !ret.isEmpty() ? ret.iterator().next() : null;
 	}
 
@@ -125,8 +131,13 @@ public class CatalogueApiUtils {
 	 * @param evenIfDoesntExist
 	 * @return the list of LFNs, or <code>null</code> if failed to get them
 	 */
-	public List<LFN> getLFNs(final Collection<String> slfn, final boolean ignoreFolders, final boolean evenIfDoesntExist) {
-		try {
+	public List<LFN> getLFNs(final Collection<String> slfn, final boolean ignoreFolders,
+			final boolean evenIfDoesntExist) {
+						System.out.println("This is getLFNs : public List<LFN> getLFNs(final Collection<String> slfn, final boolean ignoreFolders,\n" + //
+								"\t\t\tfinal boolean evenIfDoesntExist)");
+				System.out.println("slfn : " + slfn);
+				try {
+			System.out.println("Commander ge user : "+commander.getUser());
 			return Dispatcher.execute(new LFNfromString(commander.getUser(), ignoreFolders, evenIfDoesntExist, slfn)).getLFNs();
 		}
 		catch (final ServerException e) {

@@ -279,19 +279,31 @@ public class JAKeyStore {
 	}
 
 	private static boolean loadClientKeyStorage() {
+		System.out.println("Loading Client Key Storage");
+	
 		final String user_key = getClientKeyPath();
 		final String user_cert = getClientCertPath();
-
+		System.out.println("Client Key User Key: " + user_key);
+		System.out.println("Client User Cert: " + user_cert);
+	
 		if (user_key == null || user_cert == null) {
 			return false;
 		}
-
+	
 		if (!checkKeyPermissions(user_key)) {
+			System.out.println("Permissions on usercert.pem or userkey.pem are not OK");
 			logger.log(Level.WARNING, "Permissions on usercert.pem or userkey.pem are not OK");
 			return false;
 		}
-
+	
 		clientCert = makeKeyStore(user_key, user_cert, "USER CERT");
+	
+		if (clientCert != null) {
+			System.out.println("Client Key Store loaded successfully");
+		} else {
+			System.out.println("Failed to load Client Key Store");
+		}
+	
 		return clientCert != null;
 	}
 
@@ -415,35 +427,55 @@ public class JAKeyStore {
 	 * @return <code>true</code> if token has been successfully loaded
 	 */
 	public static boolean loadTokenKeyStorage() {
+		System.out.println("Loading Token Key Storage");
+	
 		final String sUserId = UserFactory.getUserID();
+		System.out.println("User ID: " + sUserId);
+	
 		final String tmpDir = System.getProperty("java.io.tmpdir");
-
-		if (sUserId == null && (tokenKeyString == null || tokenCertString == null))
+		System.out.println("Temporary Directory: " + tmpDir);
+	
+		if (sUserId == null && (tokenKeyString == null || tokenCertString == null)) {
+			System.out.println("Cannot get the current user's ID");
 			logger.log(Level.SEVERE, "Cannot get the current user's ID");
-
+		}
+	
 		final String tokenKeyFilename = "tokenkey_" + sUserId + ".pem";
 		final String defaultTokenKeyPath = Paths.get(tmpDir, tokenKeyFilename).toString();
+		System.out.println("Token Key Filename: " + tokenKeyFilename);
+		System.out.println("Default Token Key Path: " + defaultTokenKeyPath);
 		final String token_key;
-
+	
 		if (tokenKeyString != null) {
 			token_key = tokenKeyString;
-		}
-		else {
+		} else {
 			token_key = selectPath("JALIEN_TOKEN_KEY", "tokenkey.path", defaultTokenKeyPath);
 		}
-
+	
+		System.out.println("Token Key Path: " + token_key);
+	
 		final String tokenCertFilename = "tokencert_" + sUserId + ".pem";
 		final String defaultTokenCertPath = Paths.get(tmpDir, tokenCertFilename).toString();
+		System.out.println("Token Cert Filename: " + tokenCertFilename);
+		System.out.println("Default Token Cert Path: " + defaultTokenCertPath);
 		final String token_cert;
-
+	
 		if (tokenCertString != null) {
 			token_cert = tokenCertString;
-		}
-		else {
+		} else {
 			token_cert = selectPath("JALIEN_TOKEN_CERT", "tokencert.path", defaultTokenCertPath);
 		}
-
+	
+		System.out.println("Token Cert Path: " + token_cert);
+	
 		tokenCert = makeKeyStore(token_key, token_cert, "TOKEN CERT");
+	
+		if (tokenCert != null) {
+			System.out.println("Token Key Store loaded successfully");
+		} else {
+			System.out.println("Failed to load Token Key Store");
+		}
+	
 		return tokenCert != null;
 	}
 
@@ -451,13 +483,27 @@ public class JAKeyStore {
 	 * @return <code>true</code> if keystore is loaded successfully
 	 */
 	private static boolean loadServerKeyStorage() {
+		System.out.println("Loading Server Key Storage");
+	
 		final String defaultKeyPath = Paths.get(UserFactory.getUserHome(), ".globus", "hostkey.pem").toString();
+		System.out.println("Default Host Key Path: " + defaultKeyPath);
 		final String host_key = selectPath(null, "host.cert.priv.location", defaultKeyPath);
-
+	
 		final String defaultCertPath = Paths.get(UserFactory.getUserHome(), ".globus", "hostcert.pem").toString();
+		System.out.println("Default Host Cert Path: " + defaultCertPath);
 		final String host_cert = selectPath(null, "host.cert.pub.location", defaultCertPath);
-
+	
+		System.out.println("Host Key Path: " + host_key);
+		System.out.println("Host Cert Path: " + host_cert);
+	
 		hostCert = makeKeyStore(host_key, host_cert, "HOST CERT");
+	
+		if (hostCert != null) {
+			System.out.println("Server Key Store loaded successfully");
+		} else {
+			System.out.println("Failed to load Server Key Store");
+		}
+	
 		return hostCert != null;
 	}
 
@@ -676,25 +722,34 @@ public class JAKeyStore {
 	 */
 	public static boolean loadKeyStore() {
 		keystore_loaded = false;
-
+	
 		// If JALIEN_TOKEN_CERT env var is set, token is in highest priority
 		if (System.getenv("JALIEN_TOKEN_CERT") != null || tokenCertString != null) {
+			System.out.println("Load Token Key Store");
 			keystore_loaded = loadTokenKeyStorage();
 		}
-
-		if (!keystore_loaded)
-			keystore_loaded = loadClientKeyStorage();
-		if (!keystore_loaded)
-			keystore_loaded = loadServerKeyStorage();
-		if (!keystore_loaded)
-			keystore_loaded = loadTokenKeyStorage();
-
+	
 		if (!keystore_loaded) {
-			final String msg = "Failed to load any certificate, tried: user, host and token";
+			System.out.println("Load Client Key Store");
+			keystore_loaded = loadClientKeyStorage();
+		}
+		if (!keystore_loaded) {
+			System.out.println("Load Host Key Store");
+			keystore_loaded = loadServerKeyStorage();
+		}
+		if (!keystore_loaded){
+			System.out.println("Load Token Key Store (retry)");
+			keystore_loaded = loadTokenKeyStorage();
+		}
+	
+		if (!keystore_loaded) {
+			final String msg = "Failed to load any certificate, tried: user, host, and token";
 			logger.log(Level.SEVERE, msg);
 			System.err.println("ERROR: " + msg);
+		} else {
+			System.out.println("Key store loaded successfully");
 		}
-
+	
 		return keystore_loaded;
 	}
 
@@ -702,50 +757,56 @@ public class JAKeyStore {
 	 * @return either tokenCert, clientCert or hostCert keystore
 	 */
 	public static KeyStore getKeyStore() {
-		if (!keystore_loaded)
+		if (!keystore_loaded) {
+			System.out.println("Load Key Store");
 			loadKeyStore();
-
+		}
+	
 		if ((System.getenv("JALIEN_TOKEN_CERT") != null || tokenCertString != null) && (JAKeyStore.tokenCert != null)) {
+			System.out.println("Return Token Cert");
 			return JAKeyStore.tokenCert;
 		}
-
+	
 		if (JAKeyStore.clientCert != null) {
 			try {
 				if (clientCert.getCertificateChain("User.cert") == null) {
 					loadKeyStore();
 				}
-			}
-			catch (final KeyStoreException e) {
-				logger.log(Level.SEVERE, "Exception during loading client cert");
+			} catch (final KeyStoreException e) {
+				System.out.println("Exception during loading client cert");
+				logger.log(Level.SEVERE, "Exception during loading client cert", e);
 				e.printStackTrace();
 			}
+			System.out.println("Return Client Cert");
 			return JAKeyStore.clientCert;
-		}
-		else if (JAKeyStore.hostCert != null) {
+		} else if (JAKeyStore.hostCert != null) {
 			try {
 				if (hostCert.getCertificateChain("User.cert") == null)
 					loadKeyStore();
-			}
-			catch (final KeyStoreException e) {
-				logger.log(Level.SEVERE, "Exception during loading host cert");
+			} catch (final KeyStoreException e) {
+				System.out.println("Exception during loading host cert");
+				logger.log(Level.SEVERE, "Exception during loading host cert", e);
 				e.printStackTrace();
 			}
+			System.out.println("Return Host Cert");
 			return JAKeyStore.hostCert;
-		}
-		else if (JAKeyStore.tokenCert != null) {
+		} else if (JAKeyStore.tokenCert != null) {
 			try {
 				if (tokenCert.getCertificateChain("User.cert") == null)
 					loadKeyStore();
-			}
-			catch (final KeyStoreException e) {
-				logger.log(Level.SEVERE, "Exception during loading token cert");
+			} catch (final KeyStoreException e) {
+				System.out.println("Exception during loading token cert");
+				logger.log(Level.SEVERE, "Exception during loading token cert", e);
 				e.printStackTrace();
 			}
+			System.out.println("Return Token Cert");
 			return JAKeyStore.tokenCert;
 		}
-
+	
+		System.out.println("No valid certificate found, returning null");
 		return null;
 	}
+	
 
 	/**
 	 * Request token certificate from JCentral

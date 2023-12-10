@@ -54,7 +54,9 @@ public class JAliEnCOMMander implements Runnable {
 	 */
 	private static final Monitor monitor = MonitorFactory.getMonitor(JAliEnCOMMander.class.getCanonicalName());
 
-	private static CachedThreadPool COMMAND_EXECUTOR = new CachedThreadPool(ConfigUtils.getConfig().geti(JAliEnCOMMander.class.getCanonicalName() + ".executorSize", 200), 15, TimeUnit.SECONDS,
+	private static CachedThreadPool COMMAND_EXECUTOR = new CachedThreadPool(
+			ConfigUtils.getConfig().geti(JAliEnCOMMander.class.getCanonicalName() + ".executorSize", 200), 15,
+			TimeUnit.SECONDS,
 			(r) -> new Thread(r, "CommandExecutor"));
 
 	static {
@@ -122,7 +124,8 @@ public class JAliEnCOMMander implements Runnable {
 	 */
 	private static final String[] jAliEnCommandList = new String[] {
 			"cd", "pwd", "mkdir", "rmdir",
-			"ls", "find", "toXml", "cat", "whereis", "cp", "rm", "mv", "touch", "type", "lfn2guid", "guid2lfn", "guidinfo", "access", "commit", "chown", "chmod", "deleteMirror", "md5sum", "mirror",
+			"ls", "find", "toXml", "cat", "whereis", "cp", "rm", "mv", "touch", "type", "lfn2guid", "guid2lfn",
+			"guidinfo", "access", "commit", "chown", "chmod", "deleteMirror", "md5sum", "mirror",
 			"grep",
 			"changeDiff",
 			"listFilesFromCollection", "archiveList",
@@ -130,7 +133,8 @@ public class JAliEnCOMMander implements Runnable {
 			"listCEs", "jobListMatch", "listpartitions", "setCEstatus",
 			"submit", "ps", "masterjob", "kill", "w", "uptime", "resubmit", "top", "registerOutput",
 			"df", "du", "fquota", "jquota",
-			"listSEs", "listSEDistance", "setSite", "testSE", "listTransfer", "uuid", "stat", "xrdstat", "randomPFNs", "resyncLDAP", "optimiserLogs",
+			"listSEs", "listSEDistance", "setSite", "testSE", "listTransfer", "uuid", "stat", "xrdstat", "randomPFNs",
+			"resyncLDAP", "optimiserLogs",
 			"showTagValue",
 			"time", "timing", "commandlist", "motd", "ping", "version", "echo",
 			"whoami", "user", "whois", "groups", "token",
@@ -168,7 +172,8 @@ public class JAliEnCOMMander implements Runnable {
 	/**
 	 * Commands to let UI talk internally with us here
 	 */
-	private static final String[] hiddenCommandList = new String[] { "roleami", "cdir", "gfilecomplete", "cdirtiled", "blackwhite", "color", "setshell", "randomPFNs" };
+	private static final String[] hiddenCommandList = new String[] { "roleami", "cdir", "gfilecomplete", "cdirtiled",
+			"blackwhite", "color", "setshell", "randomPFNs" };
 
 	private UIPrintWriter out = null;
 
@@ -238,45 +243,68 @@ public class JAliEnCOMMander implements Runnable {
 	 * @param out
 	 * @param userProperties
 	 */
-	public JAliEnCOMMander(final AliEnPrincipal user, final LFN curDir, final String site, final UIPrintWriter out, final Map<String, Object> userProperties) {
-		c_api = new CatalogueApiUtils(this);
+	public JAliEnCOMMander(final AliEnPrincipal user, final LFN curDir, final String site, final UIPrintWriter out,
+			final Map<String, Object> userProperties) {
+		System.out.println("Initializing JAliEnCOMMander");
 
+		c_api = new CatalogueApiUtils(this);
 		q_api = new TaskQueueApiUtils(this);
 
 		this.user = (user != null) ? user : AuthorizationFactory.getDefaultUser();
+		System.out.println("User: " + this.user);
+
 		this.site = (site != null) ? site : ConfigUtils.getCloseSite();
+		System.out.println("Site: " + this.site);
+
 		localFileCash = new HashMap<>();
 		this.out = out;
+		System.out.println("out: " + this.out);
 		this.bColour = out != null ? out.colour() : false;
-
+		System.out.println("bColour: " + this.bColour);
 		if (this.user.isJobAgent()) {
-			// For job agents we do not care about directories
+			// For job agents, we do not care about directories
+			System.out.println("User is a job agent. Setting current directory to " + curDir);
 			myHome = "";
 			this.curDir = curDir;
-		}
-		else {
+		} else {
 			// User directories must be set correctly
+			System.out.println("User is not a job agent. Setting current directory to user's home directory: ");
 			myHome = UsersHelper.getHomeDir(this.user.getName());
-			if (curDir == null)
+			System.out.println("Home directory: " + myHome);
+			if (curDir == null) {
+				System.out.println("Current Dir null, use getLFN to get curDir");
 				try {
 					this.curDir = c_api.getLFN(myHome);
-				}
-				catch (final Exception e) {
+					System.out.println("Current directory set to user's home directory: " + myHome);
+				} catch (final Exception e) {
+					System.out.println("Exception initializing connection: " + e.getMessage());
 					logger.log(Level.WARNING, "Exception initializing connection", e);
 				}
-			else
+			} else {
 				this.curDir = curDir;
+				System.out.println("curDIr is not null So Current directory set to provided directory: " + curDir);
+			}
 		}
 
 		Collections.addAll(userAvailableCommands, jAliEnCommandList);
-
-		if (this.user.canBecome("admin"))
+		System.out.println("Added user commands to available commands.");
+		System.out.println("User Aaiable comamnds");
+		System.out.println(userAvailableCommands);
+		System.out.println("jAliEnAdminCommandList");
+		System.out.println(jAliEnAdminCommandList);
+		if (this.user.canBecome("admin")) {
 			Collections.addAll(userAvailableCommands, jAliEnAdminCommandList);
+			System.out.println("User can become admin. Added admin commands to available commands.");
+		}
 
-		for (final String s : hiddenCommandList)
+		for (final String s : hiddenCommandList) {
+			System.out.println("Removing hidden commands from available commands. - " + s);
 			userAvailableCommands.remove(s);
-
+		}
+		System.out.println("Removed hidden commands from available commands.");
 		bootMessage(userProperties);
+		System.out.println("bootMessage called. : " + userProperties);
+		System.out.println("JAliEnCOMMander initialized.");
 	}
 
 	/**
@@ -429,7 +457,8 @@ public class JAliEnCOMMander implements Runnable {
 	 */
 	public String getCurrentDirTilded() {
 
-		return getCurrentDir().getCanonicalName().substring(0, getCurrentDir().getCanonicalName().length() - 1).replace(myHome.substring(0, myHome.length() - 1), "~");
+		return getCurrentDir().getCanonicalName().substring(0, getCurrentDir().getCanonicalName().length() - 1)
+				.replace(myHome.substring(0, myHome.length() - 1), "~");
 	}
 
 	private String[] arg = null;
@@ -456,8 +485,7 @@ public class JAliEnCOMMander implements Runnable {
 			if (accessLogStream != null) {
 				try {
 					accessLogStream.close();
-				}
-				catch (@SuppressWarnings("unused") final IOException e) {
+				} catch (@SuppressWarnings("unused") final IOException e) {
 					// ignore
 				}
 				accessLogStream = null;
@@ -473,9 +501,9 @@ public class JAliEnCOMMander implements Runnable {
 				try {
 					accessLogFile = new File(accessLogFileName);
 					accessLogStream = new FileOutputStream(accessLogFile, true);
-				}
-				catch (final IOException ioe) {
-					logger.log(Level.WARNING, "Cannot write to access log " + accessLogFileName + ", will write to stderr instead", ioe);
+				} catch (final IOException ioe) {
+					logger.log(Level.WARNING,
+							"Cannot write to access log " + accessLogFileName + ", will write to stderr instead", ioe);
 					accessLogFile = null;
 				}
 			}
@@ -493,12 +521,12 @@ public class JAliEnCOMMander implements Runnable {
 				if (JAKeyStore.getKeyStore().getCertificateChain("User.cert") != null)
 					for (final Certificate cert : JAKeyStore.getKeyStore().getCertificateChain("User.cert")) {
 						final X509Certificate x509cert = (java.security.cert.X509Certificate) cert;
-						event.arguments.add(x509cert.getSubjectX500Principal().getName() + " (expires " + x509cert.getNotAfter() + ")");
+						event.arguments.add(x509cert.getSubjectX500Principal().getName() + " (expires "
+								+ x509cert.getNotAfter() + ")");
 					}
 				else
 					event.errorMessage = "Local identity doesn't have a certificate chain associated";
-			}
-			catch (@SuppressWarnings("unused") IOException | KeyStoreException e) {
+			} catch (@SuppressWarnings("unused") IOException | KeyStoreException e) {
 				// ignore exception in logging the startup message
 			}
 		}
@@ -522,12 +550,12 @@ public class JAliEnCOMMander implements Runnable {
 
 			if (throttleTime > 0) {
 				if (logger.isLoggable(Level.FINE))
-					logger.log(Level.FINE, "Sleeping " + throttleTime + " for " + certificateSubject + " having executed " + counter + " commands");
+					logger.log(Level.FINE, "Sleeping " + throttleTime + " for " + certificateSubject
+							+ " having executed " + counter + " commands");
 
 				try {
 					Thread.sleep(throttleTime);
-				}
-				catch (@SuppressWarnings("unused") final InterruptedException ie) {
+				} catch (@SuppressWarnings("unused") final InterruptedException ie) {
 					// ignore
 				}
 			}
@@ -544,17 +572,14 @@ public class JAliEnCOMMander implements Runnable {
 				setName("Commander " + commanderId + ": Executing: " + Arrays.toString(arg));
 
 				execute(event);
-			}
-			catch (final Exception e) {
+			} catch (final Exception e) {
 				event.exception = e;
 
 				logger.log(Level.WARNING, "Got exception", e);
 			}
-		}
-		catch (final Exception e) {
+		} catch (final Exception e) {
 			logger.log(Level.WARNING, "Got exception", e);
-		}
-		finally {
+		} finally {
 			out = null;
 
 			setName("Commander " + commanderId + ": Idle");
@@ -595,8 +620,7 @@ public class JAliEnCOMMander implements Runnable {
 				else
 					incrementCommandCount(certificateSubject, 10);
 			}
-		}
-		catch (@SuppressWarnings("unused") final IOException ioe) {
+		} catch (@SuppressWarnings("unused") final IOException ioe) {
 			// ignore any exception in writing out the event
 		}
 	}
@@ -611,8 +635,7 @@ public class JAliEnCOMMander implements Runnable {
 			event.clientID = clientId;
 
 			incrementCommandCount(certificateSubject, 1);
-		}
-		catch (@SuppressWarnings("unused") final IOException ioe) {
+		} catch (@SuppressWarnings("unused") final IOException ioe) {
 			// ignore any exception in writing out the event
 		}
 	}
@@ -645,8 +668,7 @@ public class JAliEnCOMMander implements Runnable {
 			bColour = out.colour();
 			status.set(1);
 			COMMAND_EXECUTOR.submit(this);
-		}
-		else
+		} else
 			notifyExecutionEnd();
 	}
 
@@ -687,29 +709,24 @@ public class JAliEnCOMMander implements Runnable {
 			if (arg[i].startsWith("-pwd=")) {
 				curDir = c_api.getLFN(arg[i].substring(arg[i].indexOf('=') + 1));
 				args.remove(arg[i]);
-			}
-			else if (arg[i].startsWith("-debug=")) {
+			} else if (arg[i].startsWith("-debug=")) {
 				try {
 					debug = Integer.parseInt(arg[i].substring(arg[i].indexOf('=') + 1));
-				}
-				catch (@SuppressWarnings("unused") final NumberFormatException n) {
+				} catch (@SuppressWarnings("unused") final NumberFormatException n) {
 					// ignore
 				}
 				args.remove(arg[i]);
-			}
-			else if ("-silent".equals(arg[i])) {
+			} else if ("-silent".equals(arg[i])) {
 				jcommand.silent();
 				args.remove(arg[i]);
-			}
-			else if ("-nomsg".equals(arg[i])) {
+			} else if ("-nomsg".equals(arg[i])) {
 				nomsg = true;
 				args.remove(arg[i]);
-			}
-			else if ("-nokeys".equals(arg[i])) {
+			} else if ("-nokeys".equals(arg[i])) {
 				nokeys = true;
 				args.remove(arg[i]);
-			}
-			else if ("-h".equals(arg[i]) || "--h".equals(arg[i]) || "-help".equals(arg[i]) || "--help".equals(arg[i])) {
+			} else if ("-h".equals(arg[i]) || "--h".equals(arg[i]) || "-help".equals(arg[i])
+					|| "--help".equals(arg[i])) {
 				help = true;
 				args.remove(arg[i]);
 			}
@@ -721,24 +738,21 @@ public class JAliEnCOMMander implements Runnable {
 				if ("blackwhite".equals(comm) && out != null) {
 					out.blackwhitemode();
 					bColour = out.colour();
-				}
-				else if ("color".equals(comm) && out != null) {
+				} else if ("color".equals(comm) && out != null) {
 					out.colourmode();
 					bColour = out.colour();
 				}
 				// else if ("shutdown".equals(comm))
 				// jbox.shutdown();
 				// } else if (!"setshell".equals(comm)) {
-			}
-			else {
+			} else {
 				event.errorMessage = "Command [" + comm + "] not found!";
 
 				if (out != null)
 					out.setReturnCode(ErrNo.ENOENT, event.errorMessage);
 			}
 			// }
-		}
-		else {
+		} else {
 
 			final Object[] param = { this, args };
 
@@ -750,24 +764,22 @@ public class JAliEnCOMMander implements Runnable {
 
 				try {
 					jcommand = getCommand(comm, param);
-				}
-				finally {
+				} finally {
 					out = savedOut;
 				}
-			}
-			catch (final Exception e) {
+			} catch (final Exception e) {
 				if (e.getCause() instanceof OptionException || e.getCause() instanceof NumberFormatException) {
 					event.errorMessage = "Illegal command options";
 
 					if (out != null)
 						out.setReturnCode(ErrNo.EINVAL, event.errorMessage);
-				}
-				else {
+				} else {
 					event.exception = e;
 
 					e.printStackTrace();
 					if (out != null)
-						out.setReturnCode(ErrNo.EREMOTEIO, "Error executing command [" + comm + "] : \n" + Format.stackTraceToString(e));
+						out.setReturnCode(ErrNo.EREMOTEIO,
+								"Error executing command [" + comm + "] : \n" + Format.stackTraceToString(e));
 				}
 
 				if (out != null)
@@ -780,32 +792,30 @@ public class JAliEnCOMMander implements Runnable {
 				if (jcommand == null) {
 					if (out != null)
 						out.setReturnCode(ErrNo.ENOENT.getErrorCode(), "Command not found or not implemented yet");
-				}
-				else {
+				} else {
 					if (help) {
 						// Force enable stdout message
 						nomsg = false;
 						jcommand.printHelp();
 						setReturnCode(0, "");
-					}
-					else if (jcommand.areArgumentsOk() && (args.size() != 0 || jcommand.canRunWithoutArguments())) {
+					} else if (jcommand.areArgumentsOk() && (args.size() != 0 || jcommand.canRunWithoutArguments())) {
 						jcommand.run();
-					}
-					else {
+					} else {
 						if (out != null && out.getReturnCode() == 0) {
-							// if non zero then an error message was already printed to the client, don't bloat the output with a generic help
+							// if non zero then an error message was already printed to the client, don't
+							// bloat the output with a generic help
 							out.setReturnCode(ErrNo.EINVAL, "Command requires an argument");
 							jcommand.printHelp();
 						}
 					}
 				}
-			}
-			catch (final Exception e) {
+			} catch (final Exception e) {
 				event.exception = e;
 				e.printStackTrace();
 
 				if (out != null)
-					out.setReturnCode(ErrNo.EREMOTEIO, "Error executing the command [" + comm + "]: \n" + Format.stackTraceToString(e));
+					out.setReturnCode(ErrNo.EREMOTEIO,
+							"Error executing the command [" + comm + "]: \n" + Format.stackTraceToString(e));
 			}
 		}
 
@@ -819,15 +829,15 @@ public class JAliEnCOMMander implements Runnable {
 			event.errorMessage = out.getErrorMessage();
 
 			flush();
-		}
-		else {
+		} else {
 			event.exitCode = ErrNo.ECONNRESET.getErrorCode();
 			event.errorMessage = "Client went away";
 		}
 	}
 
 	/**
-	 * Set the timing flag, to return server side command execution timing to the client
+	 * Set the timing flag, to return server side command execution timing to the
+	 * client
 	 *
 	 * @param timingInfo
 	 * @return the previous value of this flag
@@ -859,16 +869,20 @@ public class JAliEnCOMMander implements Runnable {
 	}
 
 	/**
-	 * create and return a object of alien.shell.commands.JAliEnCommand.JAliEnCommand<classSuffix>
+	 * create and return a object of
+	 * alien.shell.commands.JAliEnCommand.JAliEnCommand<classSuffix>
 	 *
 	 * @param classSuffix
-	 *            the name of the shell command, which will be taken as the suffix for the classname
+	 *                    the name of the shell command, which will be taken as the
+	 *                    suffix for the classname
 	 * @param objectParm
-	 *            array of argument objects, need to fit to the class
-	 * @return an instance of alien.shell.commands.JAliEnCommand.JAliEnCommand<classSuffix>
+	 *                    array of argument objects, need to fit to the class
+	 * @return an instance of
+	 *         alien.shell.commands.JAliEnCommand.JAliEnCommand<classSuffix>
 	 * @throws Exception
 	 */
-	protected static JAliEnBaseCommand getCommand(final String classSuffix, final Object[] objectParm) throws Exception {
+	protected static JAliEnBaseCommand getCommand(final String classSuffix, final Object[] objectParm)
+			throws Exception {
 		logger.log(Level.FINE, "Entering command with " + classSuffix + " and options " + Arrays.toString(objectParm));
 		try {
 			@SuppressWarnings("rawtypes")
@@ -877,12 +891,10 @@ public class JAliEnCOMMander implements Runnable {
 			@SuppressWarnings({ "rawtypes", "unchecked" })
 			final java.lang.reflect.Constructor co = cl.getConstructor(JAliEnCOMMander.class, List.class);
 			return (JAliEnBaseCommand) co.newInstance(objectParm);
-		}
-		catch (@SuppressWarnings("unused") final ClassNotFoundException e) {
+		} catch (@SuppressWarnings("unused") final ClassNotFoundException e) {
 			// System.out.println("No such command or not implemented");
 			return null;
-		}
-		catch (final java.lang.reflect.InvocationTargetException e) {
+		} catch (final java.lang.reflect.InvocationTargetException e) {
 			logger.log(Level.SEVERE, "Exception running command", e);
 			return null;
 		}
@@ -1025,7 +1037,8 @@ public class JAliEnCOMMander implements Runnable {
 	}
 
 	/**
-	 * Set the command's return code and print the default error message associated to it to the output stream
+	 * Set the command's return code and print the default error message associated
+	 * to it to the output stream
 	 *
 	 * @param errno
 	 */
@@ -1037,13 +1050,15 @@ public class JAliEnCOMMander implements Runnable {
 	}
 
 	/**
-	 * Set the command's return code and print the default error message associated to it plus an additional information string
+	 * Set the command's return code and print the default error message associated
+	 * to it plus an additional information string
 	 *
 	 * @param errno
 	 * @param additionalMessage
 	 */
 	public void setReturnCode(final ErrNo errno, final String additionalMessage) {
-		setLastError(errno.getErrorCode(), errno.getMessage() + (additionalMessage != null && !additionalMessage.isBlank() ? " : " + additionalMessage : ""));
+		setLastError(errno.getErrorCode(), errno.getMessage()
+				+ (additionalMessage != null && !additionalMessage.isBlank() ? " : " + additionalMessage : ""));
 
 		if (out != null)
 			out.setReturnCode(errno, additionalMessage);

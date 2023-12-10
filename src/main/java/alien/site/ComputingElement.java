@@ -71,8 +71,12 @@ public final class ComputingElement extends Thread {
 	public ComputingElement() {
 		try {
 			config = ConfigUtils.getConfigFromLdap();
+			System.out.println("Config obtained from LDAP: " + config);
+
 			site = (String) config.get("site_accountname");
-			getSiteMap();
+			System.out.println("Site Account Name: " + site);
+
+			getSiteMap(); // Assuming this method has been defined somewhere in your code.
 
 			ExtProperties ep = ConfigUtils.getConfiguration("ce-logging");
 			if (ep != null) {
@@ -80,24 +84,36 @@ public final class ComputingElement extends Thread {
 				ep.getProperties().store(output, null);
 				ByteArrayInputStream input = new ByteArrayInputStream(output.toByteArray());
 				LogManager.getLogManager().readConfiguration(input);
+				System.out.println("Logging configuration read from ce-logging properties.");
 			}
 
 			queue = getBatchQueue((String) config.get("ce_type"));
+			System.out.println("Batch Queue obtained: " + queue);
 
 			host_logdir_resolved = Functions.resolvePathWithEnv((String) config.get("host_logdir"));
 			if (host_logdir_resolved == null)
 				host_logdir_resolved = Functions.resolvePathWithEnv((String) config.get("host_tmpdir"));
 
-			logger = LogUtils.redirectToCustomHandler(logger, host_logdir_resolved + "/CE");
+			System.out.println("Resolved host_logdir: " + host_logdir_resolved);
+
+			// Uncomment the next line if you uncomment the corresponding line in your
+			// original code
+			// logger = LogUtils.redirectToCustomHandler(logger, host_logdir_resolved +
+			// "/CE");
 
 			if (config.containsKey("proxy_cache_file")) {
+				System.out.println("There is proxy cache file: " + config.get("proxy_cache_file"));
 				int ttl = ((Integer) siteMap.get("TTL")).intValue();
-				TokenFileGenerationThread tk = new TokenFileGenerationThread((String) config.get("proxy_cache_file"), logger, ttl);
+				System.out.println("ttl : " + ttl);
+				TokenFileGenerationThread tk = new TokenFileGenerationThread((String) config.get("proxy_cache_file"),
+						logger, ttl);
 				tk.start();
+				System.out.println(
+						"TokenFileGenerationThread started for proxy cache file: " + config.get("proxy_cache_file"));
 			}
 
-		}
-		catch (final Exception e) {
+		} catch (final Exception e) {
+			System.out.println("Problem in construction of ComputingElement: " + e.toString());
 			logger.severe("Problem in construction of ComputingElement: " + e.toString());
 		}
 	}
@@ -112,27 +128,29 @@ public final class ComputingElement extends Thread {
 		try {
 			Files.writeString(Paths.get(host_logdir_resolved + "/CE.pid"),
 					Integer.toString(MonitorFactory.getSelfProcessID()));
-		}
-		catch (IOException e) {
+		} catch (IOException e) {
+			System.out.println("Could not create a pidfile in: " + host_logdir_resolved + "/CE.pid");
 			logger.log(Level.WARNING, "Could not create a pidfile in: " + host_logdir_resolved + "/CE.pid", e);
 		}
 
+		System.out.println("Looping");
 		logger.info("Looping");
 		while (true) {
-
 			try {
 				if (JAKeyStore.checkExpireSoonAndReload() >= 2) {
 					// we need at least a couple of days if valid identity to request JA tokens with
+					System.out.println("Certificate is about to expire and a newer one was not available");
 					logger.log(Level.WARNING, "Certificate is about to expire and a newer one was not available");
 					System.exit(0);
 				}
-			}
-			catch (Exception e) {
+			} catch (Exception e) {
+				System.out.println("Exception reloading the identity: " + e.toString());
 				logger.log(Level.SEVERE, "Exception reloading the identity", e);
 				System.exit(1);
 			}
 
 			if (System.currentTimeMillis() - lastLdapRefresh > LDAP_REFRESH_INTERVAL) {
+				System.out.println("Time to sync with LDAP");
 				logger.info("Time to sync with LDAP");
 				logger.info("Building new SiteMap.");
 
@@ -144,15 +162,17 @@ public final class ComputingElement extends Thread {
 						site = (String) config.get("site_accountname");
 						getSiteMap();
 
+						System.out.println("New sitemap: ");
 						logger.info("New sitemap: ");
 
 						siteMap.forEach((field, entry) -> {
+							System.out.println("[" + field + ": " + entry + "]");
 							logger.info("[" + field + ": " + entry + "]");
 						});
 						lastStartupScriptGenerated = 0;
 					}
-				}
-				catch (Exception ex) {
+				} catch (Exception ex) {
+					System.out.println("Error syncing with LDAP: " + ex.toString());
 					logger.log(Level.WARNING, "Error syncing with LDAP: ", ex);
 				}
 
@@ -162,15 +182,15 @@ public final class ComputingElement extends Thread {
 			offerAgent();
 
 			try {
-				Thread.sleep(
-						System.getenv("ce_loop_time") != null ? Long.parseLong(System.getenv("ce_loop_time")) : 60000);
-			}
-			catch (InterruptedException e) {
+				long sleepTime = System.getenv("ce_loop_time") != null ? Long.parseLong(System.getenv("ce_loop_time"))
+						: 60000;
+				System.out.println("Sleeping for: " + sleepTime + " milliseconds");
+				Thread.sleep(sleepTime);
+			} catch (InterruptedException e) {
+				System.out.println("Unable to sleep: " + e.toString());
 				logger.severe("Unable to sleep: " + e.toString());
 			}
-
 		}
-
 	}
 
 	/**
@@ -185,66 +205,95 @@ public final class ComputingElement extends Thread {
 
 	private int getNumberFreeSlots() {
 		// First we get the maxJobs and maxQueued from the Central Services
-		final GetNumberFreeSlots jobSlots = commander.q_api.getNumberFreeSlots((String) config.get("host_host"), port, siteMap.get("CE").toString(),
-				ConfigUtils.getConfig().gets("version", "J-1.0").trim());
+		System.out.println("JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ");
+		System.out.println("Getting number of free slots");
+
+		final String hostHost = (String) config.get("host_host");
+		final String ceSite = siteMap.get("CE").toString();
+		final String version = ConfigUtils.getConfig().gets("version", "J-1.0").trim();
+
+		System.out.println("hostHost: " + hostHost);
+		System.out.println("CE Site: " + ceSite);
+		System.out.println("Version: " + version);
+		System.out.println("Port: " + port);
+
+		final GetNumberFreeSlots jobSlots = commander.q_api.getNumberFreeSlots(hostHost, port, ceSite, version);
 
 		if (jobSlots == null) {
+			System.out.println("Cannot get values from getNumberFreeSlots");
 			logger.info("Cannot get values from getNumberFreeSlots");
 			return 0;
 		}
 
 		final List<Integer> slots = jobSlots.getJobSlots();
-		int max_jobs = 0;
-		int max_queued = 0;
+		System.out.println("Slots: " + slots);
+		int maxJobs = 0;
+		int maxQueued = 0;
 
 		if (slots == null) {
+			System.out.println("Cannot get values from getNumberFreeSlots, slots=null");
 			logger.info("Cannot get values from getNumberFreeSlots");
 			return 0;
 		}
 
 		if (slots.get(0).intValue() == 0 && slots.size() >= 3) { // OK
-			max_jobs = slots.get(1).intValue();
-			max_queued = slots.get(2).intValue();
-			logger.info("Max jobs: " + max_jobs + " Max queued: " + max_queued);
-		}
-		else { // Error
+			maxJobs = slots.get(1).intValue();
+			maxQueued = slots.get(2).intValue();
+			System.out.println("Max jobs: " + maxJobs + " Max queued: " + maxQueued);
+			logger.info("Max jobs: " + maxJobs + " Max queued: " + maxQueued);
+			System.out.println("MaxQueued: " + maxQueued);
+		} else { // Error
 			switch (slots.get(0).intValue()) {
 				case 1:
+					System.out.println("Failed getting or inserting host in getNumberFreeSlots");
 					logger.info("Failed getting or inserting host in getNumberFreeSlots");
 					break;
 				case 2:
+					System.out.println("Failed updating host in getNumberFreeSlots");
 					logger.info("Failed updating host in getNumberFreeSlots");
 					break;
 				case 3:
+					System.out.println("Failed getting slots in getNumberFreeSlots");
 					logger.info("Failed getting slots in getNumberFreeSlots");
 					break;
 				case -2:
+					System.out.println("The queue is centrally locked!");
 					logger.info("The queue is centrally locked!");
 					break;
 				default:
+					System.out.println("Unknown error in getNumberFreeSlots");
 					logger.info("Unknown error in getNumberFreeSlots");
 			}
 			return 0;
 		}
 
-		// Now we get the values from the batch interface and calculate the slots available
+		// Now we get the values from the batch interface and calculate the slots
+		// available
 		final int queued = queue.getNumberQueued();
 		if (queued < 0) {
+			System.out.println("There was a problem getting the number of queued agents!");
 			logger.info("There was a problem getting the number of queued agents!");
 			return 0;
 		}
+		System.out.println("Agents queued: " + queued);
 		logger.info("Agents queued: " + queued);
 
 		final int active = queue.getNumberActive();
 		if (active < 0) {
+			System.out.println("There was a problem getting the number of active agents!, active<0");
 			logger.info("There was a problem getting the number of active agents!");
 			return 0;
 		}
+		System.out.println("Agents active: " + active);
 		logger.info("Agents active: " + active);
 
-		int free = max_queued - queued;
-		if ((max_jobs - active) < free)
-			free = max_jobs - active;
+		System.out.println("AGents running: " + (active - queued));
+
+		System.out.println("Free in queue: " + (maxQueued - queued));
+
+		int free = maxQueued - queued;
+		if ((maxJobs - active) < free)
+			free = maxJobs - active;
 
 		// Report slot status to ML
 		final Vector<String> paramNames = new Vector<>();
@@ -257,9 +306,10 @@ public final class ComputingElement extends Thread {
 		paramValues.add(Integer.valueOf(free < 0 ? 0 : free));
 
 		try {
-			apmon.sendParameters(site + "_CE_" + siteMap.get("CE"), config.get("host_host").toString(), paramNames.size(), paramNames, paramValues);
-		}
-		catch (ApMonException | IOException e) {
+			apmon.sendParameters(site + "_CE_" + siteMap.get("CE"), config.get("host_host").toString(),
+					paramNames.size(), paramNames, paramValues);
+		} catch (ApMonException | IOException e) {
+			System.out.println("Can't send parameter to ML (getNumberFreeSlots): " + e);
 			logger.severe("Can't send parameter to ML (getNumberFreeSlots): " + e);
 		}
 
@@ -267,47 +317,64 @@ public final class ComputingElement extends Thread {
 	}
 
 	private void offerAgent() {
+		System.out.println("Offering Agent");
+
 		int slots_to_submit = getNumberFreeSlots();
+		System.out.println("Number of Free Slots: " + slots_to_submit);
 
 		if (slots_to_submit <= 0) {
+			System.out.println("No slots available in the CE!");
 			logger.info("No slots available in the CE!");
 			return;
 		}
+
+		System.out.println("CE free slots: " + slots_to_submit);
 		logger.info("CE free slots: " + slots_to_submit);
 
 		// We ask the broker how many jobs we could run
 		final GetNumberWaitingJobs jobMatch = commander.q_api.getNumberWaitingForSite(siteMap);
 		if (jobMatch == null) {
-			logger.warning("Could not get number of waiting jobs!");
+			System.out.println("Could not get the number of waiting jobs!");
+			logger.warning("Could not get the number of waiting jobs!");
 			return;
 		}
 
 		final int waiting_jobs = jobMatch.getNumberJobsWaitingForSite().intValue();
+		System.out.println("Number of Waiting Jobs: " + waiting_jobs);
 
 		if (waiting_jobs <= 0) {
+			System.out.println("Broker returned 0 available waiting jobs");
 			logger.info("Broker returned 0 available waiting jobs");
 			return;
 		}
+
+		System.out.println("Waiting jobs: " + waiting_jobs);
 		logger.info("Waiting jobs: " + waiting_jobs);
 
 		if (waiting_jobs < slots_to_submit)
 			slots_to_submit = waiting_jobs;
 
+		System.out.println("Going to submit " + slots_to_submit + " agents");
 		logger.info("Going to submit " + slots_to_submit + " agents");
 
 		final String script = getAgentStartupScript();
 		if (script == null) {
-			logger.info("Cannot create startup script");
+			System.out.println("Cannot create a startup script");
+			logger.info("Cannot create a startup script");
 			return;
 		}
+
+		System.out.println("Created AgentStartup script: " + script);
 		logger.info("Created AgentStartup script: " + script);
 
 		while (slots_to_submit > 0) {
 			queue.submit(script);
+			System.out.println("Submitted 1 agent");
 			slots_to_submit--;
 		}
 
-		logger.info("Submitted " + slots_to_submit);
+		System.out.println("All Submissions completed");
+		logger.info("Submission completed");
 
 		return;
 	}
@@ -318,8 +385,10 @@ public final class ComputingElement extends Thread {
 	private static final long SCRIPT_REFRESH_INTERVAL = 5 * 60 * 1000L;
 
 	private String getAgentStartupScript() {
-		// reuse the previously generated JA startup script for 5 minutes, but check that it still exists on disk
-		if (System.currentTimeMillis() - lastStartupScriptGenerated < SCRIPT_REFRESH_INTERVAL && lastStartupScript != null) {
+		// reuse the previously generated JA startup script for 5 minutes, but check
+		// that it still exists on disk
+		if (System.currentTimeMillis() - lastStartupScriptGenerated < SCRIPT_REFRESH_INTERVAL
+				&& lastStartupScript != null) {
 			final File fTest = new File(lastStartupScript);
 
 			if (fTest.exists())
@@ -328,7 +397,8 @@ public final class ComputingElement extends Thread {
 
 		final String newStartupScript = createAgentStartup();
 
-		// only update the pointer if the new script could be written to disk, otherwise try to reuse the previous one
+		// only update the pointer if the new script could be written to disk, otherwise
+		// try to reuse the previous one
 		if (newStartupScript != null) {
 			if (lastStartupScript != null && !lastStartupScript.equals(newStartupScript)) {
 				final File fPrevious = new File(lastStartupScript);
@@ -384,7 +454,8 @@ public final class ComputingElement extends Thread {
 		final String token_key_str = token_certificate_full[1].trim();
 
 		// prepare the jobagent token certificate
-		before += "export JALIEN_TOKEN_CERT=\"" + token_cert_str + "\";\n" + "export JALIEN_TOKEN_KEY=\"" + token_key_str + "\";\n";
+		before += "export JALIEN_TOKEN_CERT=\"" + token_cert_str + "\";\n" + "export JALIEN_TOKEN_KEY=\""
+				+ token_key_str + "\";\n";
 		if (config.containsKey("proxy_cache_file")) {
 			String resolvedPath = Functions.resolvePathWithEnv((String) (config.get("proxy_cache_file")));
 			before += "if test -f \'"
@@ -403,15 +474,24 @@ public final class ComputingElement extends Thread {
 		before += "export TMP=$HOME" + "\n";
 		before += "export TMPDIR=$TMP" + "\n";
 		if (config.containsKey("host_logdir") || config.containsKey("site_logdir"))
-			before += "export LOGDIR=\"" + (config.containsKey("host_logdir") ? config.get("host_logdir") : config.get("site_logdir")) + "\"\n";
+			before += "export LOGDIR=\""
+					+ (config.containsKey("host_logdir") ? config.get("host_logdir") : config.get("site_logdir"))
+					+ "\"\n";
 		if (config.containsKey("host_cachedir") || config.containsKey("site_cachedir"))
-			before += "export CACHEDIR=\"" + (config.containsKey("host_cachedir") ? config.get("host_cachedir") : config.get("site_cachedir")) + "\"\n";
+			before += "export CACHEDIR=\""
+					+ (config.containsKey("host_cachedir") ? config.get("host_cachedir") : config.get("site_cachedir"))
+					+ "\"\n";
 		if (config.containsKey("host_tmpdir") || config.containsKey("site_tmpdir"))
-			before += "export TMPDIR=\"" + (config.containsKey("host_tmpdir") ? config.get("host_tmpdir") : config.get("site_tmpdir")) + "\"\n";
+			before += "export TMPDIR=\""
+					+ (config.containsKey("host_tmpdir") ? config.get("host_tmpdir") : config.get("site_tmpdir"))
+					+ "\"\n";
 		if (config.containsKey("host_workdir") || config.containsKey("site_workdir"))
-			before += "export WORKDIR=\"" + (config.containsKey("host_workdir") ? config.get("host_workdir") : config.get("site_workdir")) + "\"\n";
+			before += "export WORKDIR=\""
+					+ (config.containsKey("host_workdir") ? config.get("host_workdir") : config.get("site_workdir"))
+					+ "\"\n";
 		// if (System.getenv().containsKey("cerequirements"))
-		// before += "export cerequirements=\'" + System.getenv().get("cerequirements") + "\'\n";
+		// before += "export cerequirements=\'" + System.getenv().get("cerequirements")
+		// + "\'\n";
 		// if (System.getenv().containsKey("partition"))
 		// before += "export partition=\"" + System.getenv().get("partition") + "\"\n";
 		if (config.containsKey("ce_cerequirements"))
@@ -445,7 +525,8 @@ public final class ComputingElement extends Thread {
 			before += "export RESERVED_RAM='" + config.get("RESERVED_RAM") + "'\n";
 		if (config.containsKey("MAX_RETRIES"))
 			before += "export MAX_RETRIES='" + config.get("MAX_RETRIES") + "'\n";
-		if (config.containsKey("ce_matcharg") && getValuesFromLDAPField(config.get("ce_matcharg")).containsKey("cpucores"))
+		if (config.containsKey("ce_matcharg")
+				&& getValuesFromLDAPField(config.get("ce_matcharg")).containsKey("cpucores"))
 			before += "export CPUCores=\"" + getValuesFromLDAPField(config.get("ce_matcharg")).get("cpucores") + "\"\n";
 		if (siteMap.containsKey("closeSE"))
 			before += "export closeSE=\"" + siteMap.get("closeSE") + "\"\n";
@@ -468,7 +549,8 @@ public final class ComputingElement extends Thread {
 
 		before += startup_customization(0);
 
-		before += "export ALIENV=\"$( (" + CVMFS.getAlienvPrint() + ") 2> >(if grep -q 'ERROR'; then echo 'export ALIENV_ERRORS=TRUE;'; fi;) )" + "\"\n";
+		before += "export ALIENV=\"$( (" + CVMFS.getAlienvPrint()
+				+ ") 2> >(if grep -q 'ERROR'; then echo 'export ALIENV_ERRORS=TRUE;'; fi;) )" + "\"\n";
 
 		before += startup_customization(1);
 
@@ -490,21 +572,19 @@ public final class ComputingElement extends Thread {
 			// rather keep those files for debugging:
 			//
 			// agent_startup_file.deleteOnExit();
-		}
-		catch (final IOException e1) {
+		} catch (final IOException e1) {
 			logger.info("Error creating Agent Startup file: " + e1.toString());
 			return null;
 		}
 
 		try (PrintWriter writer = new PrintWriter(agent_startup_path, "UTF-8")) {
 			writer.println("#!/bin/bash");
-			// writer.println("[ \"$HOME\" != \"\" ] && exec -c $0"); // Used to start with a clean env
+			// writer.println("[ \"$HOME\" != \"\" ] && exec -c $0"); // Used to start with
+			// a clean env
 			writer.println(content_str);
-		}
-		catch (final FileNotFoundException e) {
+		} catch (final FileNotFoundException e) {
 			logger.info("Agent Startup file not found: " + e.toString());
-		}
-		catch (final UnsupportedEncodingException e) {
+		} catch (final UnsupportedEncodingException e) {
 			logger.info("Encoding error while writing Agent Startup file: " + e.toString());
 		}
 
@@ -512,7 +592,8 @@ public final class ComputingElement extends Thread {
 	}
 
 	private String[] getTokenCertificate(final int ttl_days) {
-		GetTokenCertificate gtc = new GetTokenCertificate(commander.getUser(), commander.getUsername(), TokenCertificateType.JOB_AGENT_TOKEN, null, ttl_days);
+		GetTokenCertificate gtc = new GetTokenCertificate(commander.getUser(), commander.getUsername(),
+				TokenCertificateType.JOB_AGENT_TOKEN, null, ttl_days);
 
 		try {
 			gtc = Dispatcher.execute(gtc);
@@ -520,8 +601,7 @@ public final class ComputingElement extends Thread {
 			token_cert_and_key[0] = gtc.getCertificateAsString();
 			token_cert_and_key[1] = gtc.getPrivateKeyAsString();
 			return token_cert_and_key;
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			logger.info("Getting JobAgent TokenCertificate failed: " + e);
 		}
 
@@ -542,7 +622,8 @@ public final class ComputingElement extends Thread {
 	}
 
 	/**
-	 * Class to periodically update the JA token in a shared folder, for long waiting JAs in the queue to find a fresh one at startup
+	 * Class to periodically update the JA token in a shared folder, for long
+	 * waiting JAs in the queue to find a fresh one at startup
 	 */
 	final class TokenFileGenerationThread extends Thread {
 		private final String resolvedPath;
@@ -551,8 +632,8 @@ public final class ComputingElement extends Thread {
 
 		/**
 		 * @param tokenFilePath location where to store the refreshed token files
-		 * @param logr an instance of the logger to write important stuff to
-		 * @param ttl in seconds
+		 * @param logr          an instance of the logger to write important stuff to
+		 * @param ttl           in seconds
 		 */
 		public TokenFileGenerationThread(final String tokenFilePath, final Logger logr, final int ttl) {
 			this.resolvedPath = Functions.resolvePathWithEnv(tokenFilePath);
@@ -565,25 +646,27 @@ public final class ComputingElement extends Thread {
 			log.info("Starting");
 
 			setName("Token file generation thread");
+			System.out.println("Starting TokenFileGenerationThread");
 			while (true) {
 				String[] certs = getTokenCertificate(ttlDays);
+				System.out.println("Got token certificate : " + certs);
 				if (certs != null) {
 					try (FileOutputStream writer = new FileOutputStream(resolvedPath)) {
 						String certCmd = "export JALIEN_TOKEN_CERT=\""
 								+ certs[0].trim() + "\";\n";
+						System.out.println("Cert command: " + certCmd);
 						String keyCmd = "export JALIEN_TOKEN_KEY=\""
 								+ certs[1].trim() + "\";\n";
+						System.out.println("Key command: " + keyCmd);
 						writer.write((certCmd + keyCmd).getBytes());
-					}
-					catch (Exception e) {
+					} catch (Exception e) {
 						log.log(Level.WARNING, "Exception writing token to " + resolvedPath, e);
 						break;
 					}
 				}
 				try {
 					Thread.sleep(5 * 60 * 1000);
-				}
-				catch (InterruptedException e) {
+				} catch (InterruptedException e) {
 					logger.log(Level.WARNING, "Getting JobAgent TokenCertificate failed", e);
 				}
 			}
@@ -610,7 +693,8 @@ public final class ComputingElement extends Thread {
 			smenv.put("TTL", "86400");
 
 		// if (System.getenv().containsKey("cerequirements"))
-		// smenv.put("cerequirements", System.getenv().get("cerequirements")); //Local overrides value in LDAP if present
+		// smenv.put("cerequirements", System.getenv().get("cerequirements")); //Local
+		// overrides value in LDAP if present
 		// else
 		if (config.containsKey("ce_cerequirements"))
 			smenv.put("cerequirements", config.get("ce_cerequirements").toString());
@@ -640,9 +724,12 @@ public final class ComputingElement extends Thread {
 		// CE storage space does not matter for WNs
 		siteMap.remove("Disk");
 
-		if (config.containsKey("ce_matcharg") && getValuesFromLDAPField(config.get("ce_matcharg")).containsKey("cpucores")) {
+		if (config.containsKey("ce_matcharg")
+				&& getValuesFromLDAPField(config.get("ce_matcharg")).containsKey("cpucores")) {
 			siteMap.put("CPUCores", Integer.valueOf(getValuesFromLDAPField(config.get("ce_matcharg")).get("cpucores")));
 		}
+		System.out.println("This is the site map");
+		System.out.println(siteMap);
 	}
 
 	/**
@@ -658,8 +745,7 @@ public final class ComputingElement extends Thread {
 				final String[] host_env_str = env_entry.split("=");
 				map.put(host_env_str[0].toLowerCase(), host_env_str[1]);
 			}
-		}
-		else {
+		} else {
 			final String[] host_env_str = ((String) field).split("=");
 			map.put(host_env_str[0].toLowerCase(), host_env_str[1]);
 		}
@@ -676,8 +762,7 @@ public final class ComputingElement extends Thread {
 		Class<?> cl = null;
 		try {
 			cl = Class.forName("alien.site.batchqueue." + type);
-		}
-		catch (final ClassNotFoundException e) {
+		} catch (final ClassNotFoundException e) {
 			logger.severe("Cannot find class for type: " + type + "\n" + e);
 			return null;
 		}
@@ -685,8 +770,7 @@ public final class ComputingElement extends Thread {
 		Constructor<?> con = null;
 		try {
 			con = cl.getConstructor(config.getClass(), logger.getClass());
-		}
-		catch (NoSuchMethodException | SecurityException e) {
+		} catch (NoSuchMethodException | SecurityException e) {
 			logger.severe("Cannot find class for ceConfig: " + e);
 			return null;
 		}
@@ -700,8 +784,8 @@ public final class ComputingElement extends Thread {
 
 		try {
 			queue = (BatchQueue) con.newInstance(config, logger);
-		}
-		catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+		} catch (InstantiationException | IllegalAccessException | IllegalArgumentException
+				| InvocationTargetException e) {
 			logger.severe("Cannot instantiate queue class for type: " + type + "\n" + e);
 		}
 
